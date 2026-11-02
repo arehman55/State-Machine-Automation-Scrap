@@ -36,3 +36,25 @@ packages = [
     "src.services",
 ]
 include-package-data = true
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "src/cli.py",
+    "build_script.py",
+    "src/base_page.py",
+    "src/pages/my_info_page.py",
+    "src/pages/time_page.py",
+    "src/keywords/orangehrm_keywords.py",
+    "src/services/thunderbird_mailer.py",
+    "src/excel_manager.py",
+    "src/mixins/attachment_mixin.py"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == '__main__':",
+    "raise NotImplementedError",
+    "pass",
+]
