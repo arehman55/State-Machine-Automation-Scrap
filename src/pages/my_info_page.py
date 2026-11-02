@@ -48,6 +48,8 @@ class MyInfoPage(BasePage):
             page.open_sub_tab("Personal Details")
         """
         logger.info("Switching to My Info section: [%s]", tab_name)
+        if getattr(self, "driver", None) is not None:
+            self.driver.execute_script("window.scrollTo(0, 0);")
         self.click_element(MyInfoLocators.tab_link(tab_name))
         self.wait_for_loaders()
 

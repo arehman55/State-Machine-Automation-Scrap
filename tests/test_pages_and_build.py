@@ -6,10 +6,11 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
+
+from selenium.common.exceptions import TimeoutException, WebDriverException
 
 import build_script
-from selenium.common.exceptions import TimeoutException, WebDriverException
 from src import config
 from src.base_page import BasePage
 from src.pages.locators import MyInfoLocators
@@ -149,7 +150,15 @@ class ThunderbirdMailerTests(unittest.TestCase):
             mailer.send_reply_with_details_excel(details_path)
 
         compose_arg = mailer._compose_and_dispatch.call_args.args[0]
-        self.assertIn(f"attachment='{os.path.abspath(details_path)}'", compose_arg)
+
+        # Generate the expected .zip path since the email now attaches a password-protected archive
+
+        secured_zip_path = str(details_path).replace(".xlsx", ".zip")
+
+        # Verify that the Thunderbird command contains the absolute path to the .zip file
+        self.assertIn(f"attachment='{os.path.abspath(secured_zip_path)}'", compose_arg)
+
+        # Ensure that no raw 'file://' protocols are passed to the compose argument
         self.assertNotIn("file://", compose_arg)
 
     def test_compose_removes_conda_library_variables(self) -> None:
@@ -157,6 +166,11 @@ class ThunderbirdMailerTests(unittest.TestCase):
         mailer.tb_exe = "thunderbird"
         mailer.timeout = 20
         mailer.desktop = Mock()
+        window_backend = MagicMock()
+        window_backend.__enter__.return_value = window_backend
+        window_backend.find_window.return_value = Mock()
+        window_backend.is_active.return_value = True
+        window_backend.is_open.return_value = False
 
         with (
             patch.dict(
@@ -172,7 +186,17 @@ class ThunderbirdMailerTests(unittest.TestCase):
                 clear=False,
             ),
             patch("src.services.thunderbird_mailer.subprocess.Popen") as popen,
+            patch.object(
+                ThunderbirdMailer, "_open_window_backend", return_value=window_backend
+            ),
+            patch("src.services.thunderbird_mailer.COMPOSE_SETTLE_SECONDS", 0),
+            patch("src.services.thunderbird_mailer.FOCUS_RETRY_SECONDS", 0),
         ):
+            # Configure mock Popen process to safely handle standard library calls
+            mock_process = popen.return_value
+            mock_process.communicate.return_value = (b"", b"")
+            mock_process.__enter__.return_value = mock_process
+
             mailer._compose_and_dispatch("to='test@example.com'")
 
         child_environment = popen.call_args.kwargs["env"]
@@ -182,16 +206,11 @@ class ThunderbirdMailerTests(unittest.TestCase):
         self.assertNotIn("PYTHONHOME", child_environment)
         self.assertNotIn("GIO_MODULE_DIR", child_environment)
         self.assertNotIn("GTK_PATH", child_environment)
-        mailer.desktop.wait_for_element.assert_called_once_with(
-            "title:Write:", timeout=20
+        window_backend.find_window.assert_called_once_with("Write:")
+        window_backend.activate.assert_called_once_with(
+            window_backend.find_window.return_value
         )
-        mailer.desktop.click.assert_has_calls(
-            [
-                unittest.mock.call("title:Write:"),
-                unittest.mock.call("name:Send"),
-            ]
-        )
-        mailer.desktop.press_keys.assert_not_called()
+        mailer.desktop.press_keys.assert_called_once_with("ctrl", "enter")
         popen.assert_called_once_with(
             ["thunderbird", "-compose", "to='test@example.com'"],
             env=child_environment,

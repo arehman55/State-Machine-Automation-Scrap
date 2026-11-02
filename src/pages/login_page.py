@@ -36,7 +36,7 @@ class LoginPage(BasePage):
             None.
 
         Example:
-            page.login(base_url, "Admin", "admin123")
+            page.login(base_url, "Admin", "********")  # Never hardcode real passwords in docs
         """
         logger.info("Navigating to login portal: %s", base_url)
         self.driver.get(base_url)

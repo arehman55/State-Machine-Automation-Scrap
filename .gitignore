@@ -5,6 +5,7 @@ __pycache__/
 
 # Robot Framework & Execution Outputs
 output/
+src/output/
 *.log
 *.png
 

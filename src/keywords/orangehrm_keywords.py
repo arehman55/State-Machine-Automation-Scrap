@@ -9,6 +9,7 @@ Exports strictly 2 Excel workbooks:
 from __future__ import annotations
 
 import logging
+import platform
 
 from robot.api.deco import keyword, library
 from selenium import webdriver
@@ -36,8 +37,8 @@ from src.exceptions import (
 )
 from src.pages.login_page import LoginPage
 from src.pages.my_info_page import MyInfoPage
-from src.services.thunderbird_mailer import ThunderbirdMailer
 from src.pages.time_page import TimePage
+from src.services.thunderbird_mailer import ThunderbirdMailer
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,10 @@ class OrangeHRMKeywords:
         options = Options()
         if headless:
             options.add_argument("--headless=new")
+        if platform.system() == "Linux":
+            # Ubuntu's default session is Wayland; pin Chrome to X11 (XWayland) so it
+            # starts reliably even from IDE terminals where WAYLAND_DISPLAY is empty.
+            options.add_argument("--ozone-platform=x11")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--window-size=1920,1080")
 
