@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
+from openpyxl import Workbook
 from selenium.common.exceptions import TimeoutException, WebDriverException
 
 import build_script
@@ -145,18 +146,20 @@ class ThunderbirdMailerTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temp_dir:
             details_path = Path(temp_dir) / "Details.xlsx"
-            details_path.write_text("placeholder", encoding="utf-8")
+            workbook = Workbook()
+            workbook.active.append(["Section", "Status"])
+            workbook.save(details_path)
 
             mailer.send_reply_with_details_excel(details_path)
 
         compose_arg = mailer._compose_and_dispatch.call_args.args[0]
 
-        # Generate the expected .zip path since the email now attaches a password-protected archive
+        secured_excel_path = details_path.with_name("Details_protected.xlsx")
 
-        secured_zip_path = str(details_path).replace(".xlsx", ".zip")
-
-        # Verify that the Thunderbird command contains the absolute path to the .zip file
-        self.assertIn(f"attachment='{os.path.abspath(secured_zip_path)}'", compose_arg)
+        # Verify that the Thunderbird command contains the absolute path to the encrypted workbook
+        self.assertIn(
+            f"attachment='{os.path.abspath(secured_excel_path)}'", compose_arg
+        )
 
         # Ensure that no raw 'file://' protocols are passed to the compose argument
         self.assertNotIn("file://", compose_arg)

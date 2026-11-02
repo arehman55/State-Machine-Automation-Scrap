@@ -21,7 +21,7 @@ from typing import Any
 import pandas as pd
 from RPA.Desktop import Desktop
 
-from src.security import protect_excel_with_simple_password
+from src.security import encrypt_excel_with_password
 
 try:  # python-xlib is Linux-only; pynput (used by RPA.Desktop) installs it there.
     from Xlib import X, display, protocol
@@ -298,7 +298,7 @@ class ThunderbirdMailer:
 
     def send_timesheet_html_email(self, timesheet_excel_path: Path) -> None:
         """
-        Secure the timesheet workbook with a password, attach it as a ZIP, and send as an HTML email.
+        Secure the timesheet workbook with a password and send it as an HTML email.
 
         Args:
             timesheet_excel_path (Path): Timesheet workbook to attach.
@@ -318,14 +318,14 @@ class ThunderbirdMailer:
             )
 
         logger.info(
-            "Securing Timesheet Excel file into a password-protected ZIP archive..."
+            "Encrypting Timesheet Excel file with native Office password protection..."
         )
 
         # 1. Define the simple security password
         simple_password = "OrangeHRM2026!"
 
-        # 2. Pack the raw Excel file into a password-protected ZIP
-        secured_zip_path = protect_excel_with_simple_password(
+        # 2. Encrypt the raw Excel file as a native Office workbook
+        encrypted_excel_path = encrypt_excel_with_password(
             timesheet_excel_path, simple_password
         )
 
@@ -342,8 +342,8 @@ class ThunderbirdMailer:
         temp_html = OUTPUT_DIR / "orangehrm_email1_body.html"
         temp_html.write_text(html_body, encoding="utf-8")
 
-        # 5. Attach the absolute path of the SECURED ZIP instead of the raw Excel file
-        attachment_path = os.path.abspath(secured_zip_path)
+        # 5. Attach the absolute path of the encrypted Excel workbook
+        attachment_path = os.path.abspath(encrypted_excel_path)
         safe_team_lead_email = TEAM_LEAD_EMAIL.replace("'", "")
         safe_subject = EMAIL_1_SUBJECT.replace("'", "")
 
@@ -364,7 +364,7 @@ class ThunderbirdMailer:
 
     def send_reply_with_details_excel(self, details_excel_path: Path) -> None:
         """
-        Secure the details workbook with a password, attach it as a ZIP, and send as a threaded reply.
+        Secure the details workbook with a password and send it as a threaded reply.
 
         Args:
             details_excel_path (Path): Path to the generated Details workbook.
@@ -383,18 +383,17 @@ class ThunderbirdMailer:
                 f"Details Excel file not found at: {details_excel_path}"
             )
 
-        logger.info("Securing Details.xlsx into a password-protected ZIP archive...")
+        logger.info("Encrypting Details.xlsx with native Office password protection...")
 
         # 1. Define the simple security password
         simple_password = "OrangeHRM2026!"
 
-        # 2. Pack the raw Excel file into a password-protected ZIP
-        # This calls the security module to handle native OS-level zip encryption
-        secured_zip_path = protect_excel_with_simple_password(
+        # 2. Encrypt the raw Excel file as a native Office workbook
+        encrypted_excel_path = encrypt_excel_with_password(
             details_excel_path, simple_password
         )
 
-        logger.info("Preparing Email 2 (Reply with Secured ZIP attached)...")
+        logger.info("Preparing Email 2 (Reply with encrypted Excel attached)...")
 
         # 3. Build the HTML body, passing the password so it is displayed in the email
         reply_html = self._build_details_reply_html(simple_password)
@@ -408,8 +407,8 @@ class ThunderbirdMailer:
         safe_subject = EMAIL_1_SUBJECT.replace("'", "")
         reply_subject = f"Re: {safe_subject}"
 
-        # 6. Use the absolute path of the SECURED ZIP instead of the raw Excel file
-        attachment_path = os.path.abspath(secured_zip_path)
+        # 6. Use the absolute path of the encrypted Excel workbook
+        attachment_path = os.path.abspath(encrypted_excel_path)
 
         # 7. Construct the compose argument string for Thunderbird
         compose_arg = (
@@ -424,7 +423,9 @@ class ThunderbirdMailer:
             "Launching Thunderbird Compose window for Email 2 (Secure Reply)..."
         )
         self._compose_and_dispatch(compose_arg)
-        logger.info("Email 2 (Reply with Secured Details.zip) dispatched successfully.")
+        logger.info(
+            "Email 2 (Reply with encrypted Details.xlsx) dispatched successfully."
+        )
 
     def _compose_and_dispatch(self, compose_arg: str) -> None:
         """
@@ -575,11 +576,11 @@ class ThunderbirdMailer:
     def _build_timesheet_html(
         records: list[dict[str, Any]], simple_password: str
     ) -> str:
-        """Build an HTML table for timesheet records, including ZIP password instructions.
+        """Build an HTML table for timesheet records, including workbook password instructions.
 
         Args:
             records (list[dict[str, Any]]): Timesheet rows.
-            simple_password (str): The password required to unlock the attached ZIP archive.
+            simple_password (str): The password required to unlock the attached workbook.
 
         Returns:
             str: Rendered HTML email body.
@@ -637,8 +638,8 @@ class ThunderbirdMailer:
             <p>The automated RPA bot has successfully executed the 7-day timesheet entries on the OrangeHRM portal. Below is the tabular summary of the weekly activities:</p>
             
             <p><strong>SECURITY INSTRUCTION:</strong><br>
-            The exported workbook is secured inside the attached <strong>OrangeHRM_Data.zip</strong> archive. Please use the password below to extract the Excel file:<br>
-            <em>(Note for Mobile Users: Please use 'Files by Google' or a standard unzip app to open the file)</em></p>
+            The attached <strong>OrangeHRM_Data_protected.xlsx</strong> workbook is encrypted with an open password. Please use the password below to open it:<br>
+            <em>(Note for Mobile Users: Open the workbook in an Excel-compatible viewer and enter the password when prompted.)</em></p>
             
             <p style="padding: 10px; background-color: #f8f9fa; border-left: 4px solid #007bff; font-family: monospace; font-size: 14px; margin: 10px 0;">
                 <strong>{html.escape(simple_password)}</strong>
@@ -653,7 +654,7 @@ class ThunderbirdMailer:
                 </tbody>
             </table>
 
-            <p>The encrypted archive <strong>OrangeHRM_Data.zip</strong> is attached to this email. A follow-up reply containing the complete 10-section My Info Details workbook will follow shortly.</p>
+            <p>The encrypted Excel workbook is attached to this email. A follow-up reply containing the complete 10-section My Info Details workbook will follow shortly.</p>
             <p style="margin-top: 20px;">Best regards,<br><strong>{html.escape(AUTOMATION_AUTHOR)}</strong><br><em>Enterprise RPA Automation Suite</em></p>
         </body>
         </html>
@@ -664,7 +665,7 @@ class ThunderbirdMailer:
         """Build the HTML body for the details workbook reply, including security instructions.
 
         Args:
-            simple_password (str): The password required to unlock the attached ZIP archive.
+            simple_password (str): The password required to unlock the attached workbook.
 
         Returns:
             str: Rendered HTML email body.
@@ -694,10 +695,10 @@ class ThunderbirdMailer:
         <html>
         <body style="font-family: Calibri, Arial, sans-serif; color: #111111; line-height: 1.5; font-size: 13px;">
             <p>Dear Team Lead,</p>
-            <p>In continuation of the previous report, please find attached the consolidated <strong>Details.zip</strong> archive generated from Phase 3 (My Info Module).</p>
+            <p>In continuation of the previous report, please find attached the consolidated <strong>Details_protected.xlsx</strong> workbook generated from Phase 3 (My Info Module).</p>
             
             <p><strong>SECURITY INSTRUCTION:</strong><br>
-            The attached archive containing the Excel workbook is password-protected. Please use the password below to extract and open the file:</p>
+            The attached Excel workbook is password-protected. Please use the password below to open the file:</p>
             
             <p style="padding: 10px; background-color: #f8f9fa; border-left: 4px solid #007bff; font-family: monospace; font-size: 14px; margin: 10px 0;">
                 <strong>{html.escape(simple_password)}</strong>

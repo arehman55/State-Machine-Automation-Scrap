@@ -2,8 +2,9 @@ import base64
 import getpass  # Used to securely hide password input in the terminal
 import hashlib
 import os
-import subprocess
 from pathlib import Path
+
+import msoffcrypto
 
 
 def encrypt_password_with_hashlib(plain_password: str, secret_key: str) -> str:
@@ -36,31 +37,26 @@ def decrypt_password_with_hashlib(encrypted_password: str, secret_key: str) -> s
     return decrypted_bytes.decode("utf-8")
 
 
-def protect_excel_with_simple_password(excel_file_path: Path, password: str) -> Path:
-    """
-    Packs the Excel file into a password-protected ZIP archive.
-    This ensures the file cannot be opened without the correct password.
-    Uses native Linux 'zip' command to maintain zero external dependencies.
+def encrypt_excel_with_password(source_path: Path, password: str) -> Path:
+    """Encrypt an Excel workbook with a native Office open password.
+
+    The resulting workbook uses the Office encryption container supported by
+    Microsoft Excel and compatible mobile viewers, rather than a ZIP archive.
 
     Args:
-        excel_file_path (Path): The path to the generated Excel file.
-        password (str): The simple password to lock the file.
+        source_path (Path): The unencrypted ``.xlsx`` file to protect.
+        password (str): The password required to open the workbook.
 
     Returns:
-        Path: The path to the newly created password-protected ZIP file.
+        Path: The path to the newly created encrypted ``.xlsx`` file.
     """
-    zip_file_path = excel_file_path.with_suffix(".zip")
+    encrypted_path = source_path.with_name(f"{source_path.stem}_protected.xlsx")
 
-    # Execute the native Linux 'zip' command with a password (-P)
-    # '-j' ensures directory paths are ignored and only the file is zipped
-    subprocess.run(
-        ["zip", "-P", password, "-j", str(zip_file_path), str(excel_file_path)],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    with source_path.open("rb") as source, encrypted_path.open("wb") as destination:
+        office_file = msoffcrypto.OfficeFile(source)
+        office_file.encrypt(password, destination)
 
-    return zip_file_path
+    return encrypted_path
 
 
 # --- Script Execution / Testing ---
