@@ -24,7 +24,6 @@ Ensure the following are installed and configured on your system before running 
 
 This project is professionally packaged using the `pyproject.toml` (PEP 621) standard. It is designed to be fully portable and self-contained. You can set it up using the unified terminal commands below:
 
-```bash
 # --- OPTION A: Install from Source (Development/Testing) ---
 python -m venv rpa-env
 source rpa-env/bin/activate  # On Windows use: rpa-env\Scripts\activate
@@ -32,47 +31,45 @@ pip install .
 
 # --- OPTION B: Install via Wheel (.whl) Release ---
 pip install orangehrm_rpa_automation-1.0.0-py3-none-any.whl
-Execution (CLI Commands)
-Once installed, the package registers a global command-line interface (CLI) command run-rpa. You can execute this command from any directory, and the bot will dynamically create an output folder in your current working directory.
 
-To run the complete 4-Phase Automation Suite via Pure Python:
+---
 
-Bash
+## Execution (CLI Commands)
+
+Once installed, the package registers a global command-line interface (CLI) command `run-rpa`. You can execute this command from **any directory**, and the bot will dynamically create an `output` folder in your current working directory.
+
+**To run the complete 4-Phase Automation Suite via Pure Python:**
 run-rpa --mode python
-To run the suite via Robot Framework (Default):
 
-Bash
+**To run the suite via Robot Framework (Default):**
 run-rpa --mode robot
-To test specific components (e.g., Email Dispatch Only):
 
-Bash
+**To test specific components (e.g., Email Dispatch Only):**
 run-rpa --mode email-only
-Development & Architecture
-This project strictly adheres to Enterprise Software Architecture principles.
 
-Page Object Model (POM): All Selenium locators (XPaths/CSS) are centralized in src/pages/locators.py to ensure maintainability.
+---
 
-Native Security: Utilizes msoffcrypto to apply industry-standard AES encryption directly to generated .xlsx files, ensuring seamless compatibility and security across Windows, Linux, and mobile Excel viewers.
+## Development & Architecture
 
-Environment Isolation: UI automation tools handle OS-level library conflicts natively (e.g., isolating Conda variables from Snap packages on Ubuntu).
+This project strictly adheres to Enterprise Software Architecture principles. 
 
-Running Unit Tests
+- **Page Object Model (POM):** All Selenium locators (XPaths/CSS) are centralized in `src/pages/locators.py` to ensure maintainability.
+- **Native Security:** Utilizes `msoffcrypto` to apply industry-standard AES encryption directly to generated `.xlsx` files, ensuring seamless compatibility and security across Windows, Linux, and mobile Excel viewers.
+- **Environment Isolation:** UI automation tools handle OS-level library conflicts natively (e.g., isolating Conda variables from Snap packages on Ubuntu).
+
+### Running Unit Tests
 To verify core logic, exception handling, and mock executions without launching a browser, run the built-in test suite:
-
-Bash
 python -m pytest
-Automated Build Pipeline
-An automated build script is provided to cleanly generate the .whl package. It safely purges old build/ and dist/ artifacts before building a fresh release:
 
-Bash
+### Automated Build Pipeline
+An automated build script is provided to cleanly generate the `.whl` package. It safely purges old `build/` and `dist/` artifacts before building a fresh release:
 python build_script.py
-The newly generated .whl file will be located in the dist/ directory.
+*The newly generated `.whl` file will be located in the `dist/` directory.*
 
-Project Outputs
-Upon successful execution, the bot generates a dynamic output/ directory in the terminal's current path containing:
+---
 
-Natively password-protected OrangeHRM_Data.xlsx (Phase 2 Scraped Data)
-
-Natively password-protected Details.xlsx (Phase 3 Comprehensive Employee Data)
-
-Temporary HTML bodies for Thunderbird dispatch.
+## Project Outputs
+Upon successful execution, the bot generates a dynamic `output/` directory in the terminal's current path containing:
+- Natively password-protected `OrangeHRM_Data.xlsx` (Phase 2 Scraped Data)
+- Natively password-protected `Details.xlsx` (Phase 3 Comprehensive Employee Data)
+- Temporary HTML bodies for Thunderbird dispatch.
