@@ -189,9 +189,8 @@ MY_INFO_SECTIONS_DATA = {
     },
 }
 
-# ==============================================================================
 # PHASE 4: THUNDERBIRD EMAIL AUTOMATION CONFIGURATION
-# ==============================================================================
+
 TEAM_LEAD_EMAIL = os.getenv(
     "TEAM_LEAD_EMAIL", "fa22-bcs-260@students.cuisahiwal.edu.pk"
 )

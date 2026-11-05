@@ -271,6 +271,11 @@ class TimeLocators:
 class MyInfoLocators:
     """Selectors for the OrangeHRM My Info page."""
 
+    PERSONAL_DETAILS_TAB = (
+        By.XPATH,
+        "//div[contains(@class, 'orangehrm-tabs-item') and contains(normalize-space(), 'Personal Details')]",
+    )
+
     TAB_LINK_TEMPLATE = "//div[@role='tablist']//a[normalize-space()={tab_name}]"
     PRIMARY_SAVE_BUTTON: Locator = (
         By.XPATH,

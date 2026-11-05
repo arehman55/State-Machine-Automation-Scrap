@@ -144,9 +144,8 @@ class ExcelManager:
                 ws = wb.active
                 ws.title = clean_sheet_name
 
-            # -----------------------------------------------------------------
             # PART 1: Write Primary Section Data Table
-            # -----------------------------------------------------------------
+
             section_headers = list(section_data[0].keys())
             current_row = 1
 
@@ -198,9 +197,8 @@ class ExcelManager:
             # Leave 2 blank spacing rows before Attachments block
             current_row += 2
 
-            # -----------------------------------------------------------------
             # PART 2: Write Section Attachments Block Under Heading "ATTACHMENTS"
-            # -----------------------------------------------------------------
+
             att_headers = [
                 "File Name",
                 "Description",

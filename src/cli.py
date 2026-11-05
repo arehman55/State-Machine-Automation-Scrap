@@ -1,7 +1,7 @@
 """
 Centralized Entry Point for the OrangeHRM & Thunderbird RPA Automation Package.
 Allows initiating the complete end-to-end Robot Framework suite, Pure Python workflow,
-or isolated Phase 4 Email Automation directly from the command line.
+or starting from a specific workflow stage via the Finite State Machine orchestrator.
 """
 
 import argparse
@@ -10,10 +10,10 @@ import sys
 
 from robot import run as robot_run
 
-# Import the dynamically configured paths.
 from src import config
 from src.exceptions import OrangeHRMBaseException
 from src.keywords.orangehrm_keywords import OrangeHRMKeywords
+from src.state_machine import run_with_statemachine
 
 logger = logging.getLogger("CentralizedRunner")
 
@@ -21,14 +21,8 @@ logger = logging.getLogger("CentralizedRunner")
 def run_robot_suite() -> int:
     """Run the complete automation suite through Robot Framework.
 
-    Args:
-        None.
-
     Returns:
         int: Robot Framework process return code.
-
-    Example:
-        exit_code = run_robot_suite()
     """
     logger.info(
         "Initiating Full RPA Suite via Robot Framework (%s)...", config.ROBOT_FILE.name
@@ -42,50 +36,45 @@ def run_robot_suite() -> int:
     return int(return_code)
 
 
-def run_pure_python_workflow(mode: str) -> None:
-    """Run the automation phases through the Python keyword library.
+def run_pure_python_workflow(start_stage: str = "full") -> None:
+    """Run the automation phases through the Python keyword library and State Machine.
 
     Args:
-        mode (str): Execution mode, including ``email-only``.
+        start_stage (str): Stage to begin from ('full', 'timesheets', 'my_info', 'email').
 
     Returns:
         None.
-
-    Example:
-        run_pure_python_workflow("email-only")
     """
     rpa = OrangeHRMKeywords()
 
-    if mode == "email-only":
-        logger.info("Initiating Phase 4: Thunderbird Email Automation Only...")
-        rpa.execute_phase_4_email_reporting()
-        logger.info("Phase 4 Email Automation completed successfully!")
-        return
-
-    logger.info("Initiating Complete 4-Phase Pure Python Execution...")
-    try:
+    def init_and_authenticate() -> None:
+        """Initialize WebDriver and complete Phase 1 login as a mandatory prerequisite."""
         rpa.initialize_browser_session()
         rpa.execute_phase_1_authentication()
-        rpa.execute_phase_2_time_module()
-        rpa.execute_phase_3_my_info_module()
-        rpa.execute_phase_4_email_reporting()
-        logger.info("All 4 Phases completed successfully!")
-    finally:
-        rpa.close_browser_safely()
+
+    stage_callbacks = {
+        "auth": init_and_authenticate,
+        "timesheets": rpa.execute_phase_2_time_module,
+        "my_info": rpa.execute_phase_3_my_info_module,
+        "email": rpa.execute_phase_4_email_reporting,
+    }
+
+    cleanup_fn = None if start_stage == "email" else rpa.close_browser_safely
+
+    logger.info(
+        "Initiating State Machine Pure Python Execution (Start Stage: '%s')...",
+        start_stage,
+    )
+    run_with_statemachine(
+        stage_callbacks=stage_callbacks,
+        cleanup_callback=cleanup_fn,
+        start_stage=start_stage,
+    )
+    logger.info("Requested workflow stages completed successfully!")
 
 
 def main() -> None:
-    """Parse command-line arguments and start the selected workflow.
-
-    Args:
-        None.
-
-    Returns:
-        None.
-
-    Example:
-        main()
-    """
+    """Parse command-line arguments and start the selected workflow."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -100,19 +89,39 @@ def main() -> None:
         default="robot",
         help=(
             "'robot': Run full suite via tasks.robot (default) | "
-            "'python': Run all 4 phases directly via Python | "
+            "'python': Run phases directly via Python State Machine | "
             "'email-only': Run only Phase 4 Thunderbird email automation"
+        ),
+    )
+    parser.add_argument(
+        "--stage",
+        choices=["full", "timesheets", "my_info", "email"],
+        default="full",
+        help=(
+            "Target stage to start from after mandatory login "
+            "('full', 'timesheets', 'my_info', 'email'). Automatically uses Python mode."
         ),
     )
     args = parser.parse_args()
 
     try:
         config.validate_environment()
-        if args.mode == "robot":
-            exit_code = run_robot_suite()
-            sys.exit(exit_code)
+
+        if args.mode == "email-only" or args.stage == "email":
+            run_pure_python_workflow(start_stage="email")
+        elif args.stage != "full" or args.mode == "python":
+            run_pure_python_workflow(start_stage=args.stage)
         else:
-            run_pure_python_workflow(args.mode)
+
+            def execute_robot() -> None:
+                exit_code = run_robot_suite()
+                if exit_code != 0:
+                    raise RuntimeError(
+                        f"Robot Framework suite exited with code {exit_code}"
+                    )
+
+            run_with_statemachine(main_function=execute_robot)
+
     except (OSError, RuntimeError, ValueError, OrangeHRMBaseException) as exc:
         print(f"Execution failed: {exc}", file=sys.stderr)
         sys.exit(1)

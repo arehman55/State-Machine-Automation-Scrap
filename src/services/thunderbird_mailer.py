@@ -23,7 +23,7 @@ from RPA.Desktop import Desktop
 
 from src.security import encrypt_excel_with_password
 
-try:  # python-xlib is Linux-only; pynput (used by RPA.Desktop) installs it there.
+try:
     from Xlib import X, display, protocol
     from Xlib import error as xlib_error
 except ImportError:

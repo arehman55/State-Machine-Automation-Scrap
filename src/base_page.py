@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 class BasePage(AttachmentMixin):
-    """Foundational wrapper for all OrangeHRM Page Objects using pure Python Selenium."""
+    """Foundational wrapper for all OrangeHRM Page Objects using Python Selenium."""
 
     # Global OrangeHRM Vue.js Locators
     LOADING_SPINNER = BaseLocators.LOADING_SPINNER

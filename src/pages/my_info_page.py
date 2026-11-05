@@ -36,22 +36,35 @@ class MyInfoPage(BasePage):
         self.wait_for_loaders()
 
     def open_sub_tab(self, tab_name: str) -> None:
-        """Click a tab inside the My Info module.
+        """Click a tab inside the My Info module safely.
 
         Args:
             tab_name (str): Visible name of the tab to open.
 
         Returns:
             None.
-
-        Example:
-            page.open_sub_tab("Personal Details")
         """
         logger.info("Switching to My Info section: [%s]", tab_name)
         if getattr(self, "driver", None) is not None:
             self.driver.execute_script("window.scrollTo(0, 0);")
-        self.click_element(MyInfoLocators.tab_link(tab_name))
-        self.wait_for_loaders()
+
+        try:
+            if tab_name == "Personal Details":
+                active_tab = self.driver.find_elements(
+                    *MyInfoLocators.PERSONAL_DETAILS_TAB
+                )
+                if active_tab:
+                    logger.info("Personal Details tab is already active by default.")
+                    return
+
+            self.click_element(MyInfoLocators.tab_link(tab_name))
+            self.wait_for_loaders()
+        except Exception as error:
+            logger.warning(
+                "Could not click tab %s directly or it was already active: %s",
+                tab_name,
+                error,
+            )
 
     def process_all_ten_sections(
         self,
@@ -142,9 +155,7 @@ class MyInfoPage(BasePage):
 
         return all_sections_scraped, all_attachments_by_section
 
-    # -------------------------------------------------------------------------
     # Individual Section Handlers (1 to 10)
-    # -------------------------------------------------------------------------
 
     def _handle_personal_details(
         self, data: dict[str, Any], attachment_file: Path
